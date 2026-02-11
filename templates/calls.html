@@ -1,0 +1,789 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Trade Tracker — CANSLIM Dashboard</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background-color: #1a1a2e;
+            color: #eee;
+            padding: 20px;
+            line-height: 1.6;
+        }
+        .container { max-width: 1400px; margin: 0 auto; }
+        .nav { display: flex; gap: 15px; margin-bottom: 25px; align-items: center; }
+        .nav a {
+            color: #8b949e; text-decoration: none; font-size: 0.95rem;
+            padding: 8px 16px; border-radius: 6px; transition: all 0.2s;
+        }
+        .nav a:hover { color: #eee; background: rgba(255,255,255,0.05); }
+        .nav a.active { color: #e94560; background: rgba(233,69,96,0.1); font-weight: 600; }
+        h1 { color: #e94560; margin-bottom: 5px; font-size: 1.8em; }
+        h2 { color: #eee; margin-bottom: 15px; font-size: 1.2em; }
+        .subtitle { color: #8b949e; margin-bottom: 25px; font-size: 0.9rem; }
+        .stats-grid {
+            display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+            gap: 15px; margin-bottom: 25px;
+        }
+        .stat-card { background: #16213e; border-radius: 8px; padding: 18px; text-align: center; }
+        .stat-card .number { font-size: 1.6rem; font-weight: 700; color: #4ecca3; }
+        .stat-card .number.negative { color: #e94560; }
+        .stat-card .label { color: #8b949e; font-size: 0.8rem; margin-top: 4px; }
+        .card {
+            background: #16213e; border-radius: 8px; padding: 20px;
+            margin-bottom: 20px; box-shadow: 0 4px 6px rgba(0,0,0,0.3);
+        }
+        table { width: 100%; border-collapse: collapse; font-size: 0.9rem; }
+        th, td { padding: 10px 12px; text-align: left; border-bottom: 1px solid #2a2a4a; white-space: nowrap; }
+        th { color: #8b949e; font-weight: 500; font-size: 0.8rem; text-transform: uppercase; }
+        tbody tr:hover { background: rgba(78,204,163,0.05); }
+        .positive { color: #4ecca3; font-weight: 600; }
+        .negative { color: #e94560; font-weight: 600; }
+        .badge { display: inline-block; padding: 3px 10px; border-radius: 12px; font-size: 0.75rem; font-weight: 500; }
+        .badge-green { background: rgba(78,204,163,0.15); color: #4ecca3; }
+        .badge-yellow { background: rgba(255,193,7,0.15); color: #ffc107; }
+        .badge-blue { background: rgba(88,166,255,0.15); color: #58a6ff; }
+        .badge-red { background: rgba(233,69,96,0.15); color: #e94560; }
+        .badge-ticker { background: rgba(233,69,96,0.2); color: #e94560; font-weight: 700; font-size: 0.8rem; padding: 4px 12px; }
+        .badge-account { font-size: 0.7rem; padding: 2px 8px; border-radius: 10px; }
+        .badge-schwab { background: rgba(88,166,255,0.15); color: #58a6ff; }
+        .badge-robinhood { background: rgba(78,204,163,0.15); color: #4ecca3; }
+        .btn {
+            display: inline-block; padding: 8px 16px; background: #e94560; color: #fff;
+            border: none; border-radius: 6px; font-size: 0.9rem; cursor: pointer;
+            text-decoration: none; transition: background 0.2s;
+        }
+        .btn:hover { background: #c73e54; }
+        .btn-sm { padding: 4px 10px; font-size: 0.8rem; }
+        .btn-outline { background: transparent; border: 1px solid #2a2a4a; color: #8b949e; }
+        .btn-outline:hover { border-color: #e94560; color: #e94560; }
+        .btn-blue { background: #3498db; }
+        .btn-blue:hover { background: #2980b9; }
+        .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 0 20px; }
+        label { display: block; margin-bottom: 6px; font-size: 0.85rem; color: #8b949e; }
+        input, select, textarea {
+            width: 100%; padding: 10px 12px; background: #0f3460; border: 1px solid #2a2a4a;
+            border-radius: 6px; color: #eee; font-family: inherit; font-size: 0.9rem; margin-bottom: 15px;
+        }
+        input:focus, select:focus, textarea:focus { outline: none; border-color: #e94560; }
+        textarea { min-height: 60px; resize: vertical; }
+        .modal {
+            position: fixed; top: 0; left: 0; right: 0; bottom: 0;
+            background: rgba(0,0,0,0.7); display: none; align-items: center;
+            justify-content: center; z-index: 1000;
+        }
+        .modal.show { display: flex; }
+        .modal-content { max-width: 550px; width: 90%; max-height: 90vh; overflow-y: auto; }
+        .table-wrap { overflow-x: auto; }
+        .actions-row { display: flex; gap: 12px; align-items: center; margin-bottom: 20px; }
+
+        /* Main section tabs */
+        .section-tabs { display: flex; gap: 0; margin-bottom: 25px; border-bottom: 2px solid #0f3460; }
+        .section-tab {
+            padding: 12px 24px; cursor: pointer; font-size: 1rem; color: #8b949e;
+            border-bottom: 3px solid transparent; transition: all 0.2s; background: none; border-top: none; border-left: none; border-right: none;
+        }
+        .section-tab:hover { color: #e94560; background: rgba(233,69,96,0.05); }
+        .section-tab.active { color: #e94560; border-bottom-color: #e94560; font-weight: 600; }
+        .section-content { display: none; }
+        .section-content.active { display: block; }
+
+        .ticker-tabs { display: flex; gap: 8px; margin-bottom: 20px; flex-wrap: wrap; }
+        .ticker-tab {
+            padding: 6px 14px; border-radius: 6px; cursor: pointer; font-size: 0.85rem;
+            background: #0f3460; border: 1px solid #2a2a4a; color: #8b949e; transition: all 0.2s;
+        }
+        .ticker-tab:hover { border-color: #e94560; color: #eee; }
+        .ticker-tab.active { background: rgba(233,69,96,0.15); border-color: #e94560; color: #e94560; font-weight: 600; }
+        .tip { color: #8b949e; font-size: 0.82rem; margin-top: -10px; margin-bottom: 15px; }
+        .stop-warn { color: #e94560; font-size: 0.75rem; }
+        .target-near { color: #4ecca3; font-size: 0.75rem; }
+        @media (max-width: 600px) {
+            .form-grid { grid-template-columns: 1fr; }
+            .stats-grid { grid-template-columns: repeat(2, 1fr); }
+        }
+    </style>
+</head>
+<body>
+<div class="container">
+    <div class="nav">
+        <a href="/">📊 Scanner</a>
+        <a href="/routine">📋 Routine</a>
+        <a href="/calls" class="active">📈 Trade Tracker</a>
+        <a href="/calendar">📅 Calendar</a>
+    </div>
+
+    <h1>📈 Trade Tracker</h1>
+    <p class="subtitle">Stock positions & options income — all accounts</p>
+
+    <!-- Main section tabs -->
+    <div class="section-tabs">
+        <button class="section-tab active" onclick="switchSection('stocks')">📈 Stocks</button>
+        <button class="section-tab" onclick="switchSection('options')">📋 Options</button>
+    </div>
+
+    <!-- ═══════════════════════════════════════════════════ -->
+    <!-- STOCKS SECTION -->
+    <!-- ═══════════════════════════════════════════════════ -->
+    <div class="section-content active" id="stocksSection">
+        <div class="stats-grid" id="stockStatsGrid"></div>
+
+        <div class="actions-row">
+            <button class="btn" onclick="showAddPosition()">+ New Position</button>
+            <span style="color:#8b949e; font-size:0.82rem;">Track entries, stops, targets & P&L</span>
+        </div>
+
+        <!-- Open Positions -->
+        <div class="card" id="openPosSection" style="display:none;">
+            <h2>🟢 Open Positions</h2>
+            <div class="table-wrap">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Ticker</th><th>Account</th><th>Entry</th><th>Price</th>
+                            <th>Current</th><th>P&L</th>
+                            <th>Shares</th><th>Cost</th><th>Stop</th><th>1R</th><th>Target</th>
+                            <th>Setup</th><th></th>
+                        </tr>
+                    </thead>
+                    <tbody id="openPosBody"></tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- Closed Positions -->
+        <div class="card" id="closedPosSection" style="display:none;">
+            <h2>📜 Closed Trades</h2>
+            <div class="table-wrap">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Ticker</th><th>Account</th><th>Entry</th><th>Exit</th>
+                            <th>Shares</th><th>P&L $</th><th>P&L %</th><th>Days</th><th>Notes</th>
+                        </tr>
+                    </thead>
+                    <tbody id="closedPosBody"></tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- ═══════════════════════════════════════════════════ -->
+    <!-- OPTIONS SECTION -->
+    <!-- ═══════════════════════════════════════════════════ -->
+    <div class="section-content" id="optionsSection">
+        <!-- Ticker filter tabs -->
+        <div class="ticker-tabs" id="tickerTabs">
+            <div class="ticker-tab active" onclick="filterTicker('ALL')">All</div>
+        </div>
+
+        <div class="stats-grid" id="optionStatsGrid"></div>
+
+        <div class="actions-row">
+            <button class="btn" onclick="showAdd()">+ New Call Sale</button>
+            <span style="color:#8b949e; font-size:0.82rem;">Sell Monday/Tuesday for max theta</span>
+        </div>
+
+        <!-- Open Options -->
+        <div class="card" id="openSection" style="display:none;">
+            <h2>🟢 Open Positions</h2>
+            <div class="table-wrap">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Ticker</th><th>Sold</th><th>Expiry</th><th>Strike</th><th>Δ</th>
+                            <th>Contracts</th><th>Premium</th><th>Price @Sell</th><th>Notes</th><th></th>
+                        </tr>
+                    </thead>
+                    <tbody id="openBody"></tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- Closed Options -->
+        <div class="card" id="closedSection" style="display:none;">
+            <h2>📜 Trade History</h2>
+            <div class="table-wrap">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Ticker</th><th>Sold</th><th>Expiry</th><th>Strike</th>
+                            <th>Contracts</th><th>Premium</th><th>Status</th><th>P&L</th><th>Notes</th>
+                        </tr>
+                    </thead>
+                    <tbody id="closedBody"></tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- ═══════════════════════════════════════════════════ -->
+    <!-- MODALS -->
+    <!-- ═══════════════════════════════════════════════════ -->
+
+    <!-- Add Stock Position Modal -->
+    <div class="modal" id="addPosModal">
+        <div class="modal-content card">
+            <h2>📝 New Stock Position</h2>
+            <div class="form-grid">
+                <div>
+                    <label>Ticker</label>
+                    <input type="text" id="posTicker" placeholder="AAPL" style="text-transform:uppercase;">
+                </div>
+                <div>
+                    <label>Account</label>
+                    <select id="posAccount">
+                        <option value="schwab">Schwab</option>
+                        <option value="robinhood">Robinhood IRA</option>
+                    </select>
+                </div>
+                <div>
+                    <label>Entry Date</label>
+                    <input type="date" id="posEntryDate">
+                </div>
+                <div>
+                    <label>Entry Price ($)</label>
+                    <input type="number" id="posEntryPrice" step="0.01" placeholder="72.80">
+                </div>
+                <div>
+                    <label>Shares</label>
+                    <input type="number" id="posShares" min="1" placeholder="500">
+                </div>
+                <div>
+                    <label>Stop Price ($)</label>
+                    <input type="number" id="posStop" step="0.01" placeholder="67.52">
+                </div>
+                <div>
+                    <label>Target Price ($)</label>
+                    <input type="number" id="posTarget" step="0.01" placeholder="85.00">
+                </div>
+                <div>
+                    <label>Setup Type</label>
+                    <input type="text" id="posSetup" placeholder="Breakout, VCP, Gap Up...">
+                </div>
+            </div>
+            <label>Notes</label>
+            <textarea id="posNotes" rows="2" placeholder="Trade thesis, catalyst..."></textarea>
+            <div style="display:flex; gap:10px; margin-top:15px;">
+                <button class="btn" onclick="submitAddPosition()">Add Position</button>
+                <button class="btn btn-outline" onclick="hideModal('addPosModal')">Cancel</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Edit Stop Modal -->
+    <div class="modal" id="editStopModal">
+        <div class="modal-content card">
+            <h2>✏️ Edit Stop</h2>
+            <input type="hidden" id="editStopId">
+            <p id="editStopInfo" style="color:#8b949e; margin-bottom:15px;"></p>
+            <label>New Stop Price ($)</label>
+            <input type="number" id="editStopPrice" step="0.01">
+            <label>Notes (optional)</label>
+            <textarea id="editStopNotes" rows="2" placeholder="Moved to breakeven, tightened..."></textarea>
+            <div style="display:flex; gap:10px; margin-top:15px;">
+                <button class="btn" onclick="submitEditStop()">Update Stop</button>
+                <button class="btn btn-outline" onclick="hideModal('editStopModal')">Cancel</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Close Position Modal -->
+    <div class="modal" id="closePosModal">
+        <div class="modal-content card">
+            <h2>🔒 Close Position</h2>
+            <input type="hidden" id="closePosId">
+            <p id="closePosInfo" style="color:#8b949e; margin-bottom:15px;"></p>
+            <div class="form-grid">
+                <div>
+                    <label>Exit Price ($)</label>
+                    <input type="number" id="closePosPrice" step="0.01">
+                </div>
+                <div>
+                    <label>Close Date</label>
+                    <input type="date" id="closePosDate">
+                </div>
+            </div>
+            <label>Notes</label>
+            <textarea id="closePosNotes" rows="2" placeholder="Stopped out, hit target, trimmed..."></textarea>
+            <div style="display:flex; gap:10px; margin-top:15px;">
+                <button class="btn" onclick="submitClosePosition()">Close Trade</button>
+                <button class="btn btn-outline" onclick="hideModal('closePosModal')">Cancel</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Add Option Modal -->
+    <div class="modal" id="addModal">
+        <div class="modal-content card">
+            <h2>📝 Sell Covered Calls</h2>
+            <div class="form-grid">
+                <div>
+                    <label>Ticker</label>
+                    <input type="text" id="addTicker" value="SPY" placeholder="SPY, AMZN, etc." style="text-transform:uppercase;">
+                </div>
+                <div>
+                    <label>Sell Date</label>
+                    <input type="date" id="addSellDate">
+                </div>
+                <div>
+                    <label>Expiry Date</label>
+                    <input type="date" id="addExpiry">
+                </div>
+                <div>
+                    <label>Strike Price ($)</label>
+                    <input type="number" id="addStrike" step="0.5" placeholder="704">
+                </div>
+                <div>
+                    <label>Stock Price at Sell ($)</label>
+                    <input type="number" id="addStockPrice" step="0.01" placeholder="690.50">
+                </div>
+                <div>
+                    <label>Contracts</label>
+                    <input type="number" id="addContracts" value="7" min="1" max="50">
+                </div>
+                <div>
+                    <label>Premium per Share ($)</label>
+                    <input type="number" id="addPremium" step="0.01" placeholder="0.95">
+                    <p class="tip">Per share price, not total per contract</p>
+                </div>
+                <div>
+                    <label>Delta</label>
+                    <select id="addDelta">
+                        <option value="0.05">0.05</option>
+                        <option value="0.10" selected>0.10</option>
+                        <option value="0.15">0.15</option>
+                        <option value="0.20">0.20</option>
+                        <option value="0.25">0.25</option>
+                        <option value="0.30">0.30</option>
+                    </select>
+                </div>
+            </div>
+            <label>Notes</label>
+            <textarea id="addNotes" rows="2" placeholder="e.g. FOMC week, went lower delta..."></textarea>
+            <div style="display:flex; gap:10px; margin-top:15px;">
+                <button class="btn" onclick="submitAdd()">Log Trade</button>
+                <button class="btn btn-outline" onclick="hideModal('addModal')">Cancel</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Close Option Modal -->
+    <div class="modal" id="closeModal">
+        <div class="modal-content card">
+            <h2>Close Option Position</h2>
+            <input type="hidden" id="closeTradeId">
+            <label>Outcome</label>
+            <select id="closeStatus" onchange="toggleCloseFields()">
+                <option value="expired">Expired Worthless (full win)</option>
+                <option value="called_away">Called Away (assigned)</option>
+                <option value="rolled">Rolled (bought back + sold new)</option>
+                <option value="closed">Bought Back (early close)</option>
+            </select>
+            <label>Close Date</label>
+            <input type="date" id="closeDate">
+            <div id="buybackRow" style="display:none;">
+                <label>Buyback Price (per share)</label>
+                <input type="number" id="closeBuyback" step="0.01" value="0">
+            </div>
+            <label>Notes</label>
+            <textarea id="closeNotes" rows="2"></textarea>
+            <div style="display:flex; gap:10px; margin-top:15px;">
+                <button class="btn" onclick="submitClose()">Close Trade</button>
+                <button class="btn btn-outline" onclick="hideModal('closeModal')">Cancel</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    // ══════════════════════════════════════════
+    // XSS Prevention
+    // ══════════════════════════════════════════
+    function escapeHTML(str) {
+        if (str === null || str === undefined) return '';
+        const div = document.createElement('div');
+        div.textContent = String(str);
+        return div.innerHTML;
+    }
+
+    // ══════════════════════════════════════════
+    // State
+    // ══════════════════════════════════════════
+    let allPositions = [];
+    let posSummary = {};
+    let allTrades = [];
+    let allSummary = {};
+    let currentTicker = 'ALL';
+    let currentSection = 'stocks';
+    let liveQuotes = {};
+
+    // ══════════════════════════════════════════
+    // Section switching
+    // ══════════════════════════════════════════
+    function switchSection(section) {
+        currentSection = section;
+        document.querySelectorAll('.section-tab').forEach(t => t.classList.remove('active'));
+        document.querySelectorAll('.section-content').forEach(c => c.classList.remove('active'));
+        if (section === 'stocks') {
+            document.querySelector('.section-tab:nth-child(1)').classList.add('active');
+            document.getElementById('stocksSection').classList.add('active');
+        } else {
+            document.querySelector('.section-tab:nth-child(2)').classList.add('active');
+            document.getElementById('optionsSection').classList.add('active');
+        }
+    }
+
+    function hideModal(id) { document.getElementById(id).classList.remove('show'); }
+
+    // ══════════════════════════════════════════
+    // STOCKS
+    // ══════════════════════════════════════════
+    async function loadPositions() {
+        try {
+            const res = await fetch('/api/positions');
+            const data = await res.json();
+            allPositions = data.positions || [];
+            posSummary = data.summary || {};
+            // Fetch live quotes for open positions
+            const openTickers = allPositions.filter(p => p.status === 'open').map(p => p.ticker);
+            if (openTickers.length > 0) {
+                try {
+                    const qRes = await fetch('/api/quotes?tickers=' + openTickers.join(','));
+                    liveQuotes = await qRes.json();
+                } catch(e) { console.error('Quote fetch failed:', e); }
+            }
+            renderStockStats();
+            renderPositions();
+        } catch(e) { console.error('Failed to load positions:', e); }
+    }
+
+    function renderStockStats() {
+        const s = posSummary;
+        const grid = document.getElementById('stockStatsGrid');
+        grid.innerHTML = `
+            <div class="stat-card"><div class="number">${s.open_count||0}</div><div class="label">Open Positions</div></div>
+            <div class="stat-card"><div class="number">$${num(s.total_capital)}</div><div class="label">Capital Deployed</div></div>
+            <div class="stat-card"><div class="number ${(s.total_pnl||0)<0?'negative':''}">$${num(s.total_pnl)}</div><div class="label">Realized P&L</div></div>
+            <div class="stat-card"><div class="number">${s.closed_count||0}</div><div class="label">Closed Trades</div></div>
+            <div class="stat-card"><div class="number">${s.win_rate||0}%</div><div class="label">Win Rate</div></div>
+            <div class="stat-card"><div class="number">${(s.avg_r_multiple||0).toFixed(1)}R</div><div class="label">Avg R-Multiple</div></div>
+        `;
+    }
+
+    function renderPositions() {
+        const open = allPositions.filter(p => p.status === 'open');
+        const closed = allPositions.filter(p => p.status !== 'open').reverse();
+
+        const openSec = document.getElementById('openPosSection');
+        const openBody = document.getElementById('openPosBody');
+        if (open.length) {
+            openSec.style.display = 'block';
+            openBody.innerHTML = open.map(p => {
+                const acctClass = p.account === 'schwab' ? 'badge-schwab' : 'badge-robinhood';
+                const acctLabel = p.account === 'schwab' ? 'Schwab' : 'RH IRA';
+                const cost = (p.entry_price * p.shares).toFixed(0);
+                const risk = p.entry_price - p.stop_price;
+                const oneR = p.entry_price + risk;
+                const oneRLabel = risk > 0 ? `$${oneR.toFixed(2)}` : '—';
+                // Live quote data
+                const q = liveQuotes[p.ticker] || {};
+                const curPrice = q.price || 0;
+                const curLabel = curPrice > 0 ? `$${curPrice.toFixed(2)}` : '...';
+                const curClass = curPrice > 0 ? (q.changePct >= 0 ? 'positive' : 'negative') : '';
+                const curChange = curPrice > 0 ? `${q.changePct >= 0 ? '+' : ''}${q.changePct.toFixed(2)}%` : '';
+                // Unrealized P&L
+                const unrealPnl = curPrice > 0 ? (curPrice - p.entry_price) * p.shares : 0;
+                const unrealPct = curPrice > 0 ? ((curPrice / p.entry_price - 1) * 100).toFixed(1) : '—';
+                const pnlClass = unrealPnl >= 0 ? 'positive' : 'negative';
+                const pnlLabel = curPrice > 0 ? `$${num(Math.round(unrealPnl))} (${unrealPct}%)` : '...';
+                // 1R indicator
+                const hitOneR = curPrice >= oneR && risk > 0;
+                const oneRStyle = hitOneR ? 'color:#4ecca3; font-weight:700;' : '';
+                return `<tr>
+                    <td><span class="badge badge-ticker">${p.ticker}</span></td>
+                    <td><span class="badge badge-account ${acctClass}">${acctLabel}</span></td>
+                    <td>${p.entry_date}</td>
+                    <td>$${Number(p.entry_price).toFixed(2)}</td>
+                    <td class="${curClass}">${curLabel}<br><span style="font-size:0.75rem;">${curChange}</span></td>
+                    <td class="${pnlClass}">${pnlLabel}</td>
+                    <td>${p.shares}</td>
+                    <td>$${num(cost)}</td>
+                    <td>$${Number(p.stop_price).toFixed(2)}</td>
+                    <td style="${oneRStyle}" title="Move stop to breakeven at 1R${hitOneR ? ' ✅ HIT!' : ''}">${oneRLabel}${hitOneR ? ' ✅' : ''}</td>
+                    <td>$${Number(p.target_price).toFixed(2)}</td>
+                    <td style="max-width:120px;overflow:hidden;text-overflow:ellipsis;">${p.setup_type||'—'}</td>
+                    <td>
+                        <button class="btn btn-sm btn-blue" onclick="showEditStop(${p.id},'${p.ticker}',${p.stop_price},${p.entry_price})">Stop</button>
+                        <button class="btn btn-sm" onclick="showClosePosition(${p.id},'${p.ticker}',${p.shares},${p.entry_price})">Close</button>
+                    </td>
+                </tr>`;
+            }).join('');
+        } else { openSec.style.display = 'none'; }
+
+        const closedSec = document.getElementById('closedPosSection');
+        const closedBody = document.getElementById('closedPosBody');
+        if (closed.length) {
+            closedSec.style.display = 'block';
+            closedBody.innerHTML = closed.map(p => {
+                const acctClass = p.account === 'schwab' ? 'badge-schwab' : 'badge-robinhood';
+                const acctLabel = p.account === 'schwab' ? 'Schwab' : 'RH IRA';
+                const pnl = p.pnl || 0;
+                const pnlPct = p.entry_price ? ((p.close_price - p.entry_price) / p.entry_price * 100).toFixed(1) : '0';
+                const days = p.entry_date && p.close_date ? Math.round((new Date(p.close_date) - new Date(p.entry_date)) / 86400000) : '—';
+                return `<tr>
+                    <td><span class="badge badge-ticker">${p.ticker}</span> <span class="badge badge-account ${acctClass}">${acctLabel}</span></td>
+                    <td>${p.entry_date} @ $${Number(p.entry_price).toFixed(2)}</td>
+                    <td>${p.close_date||'—'} @ $${p.close_price ? Number(p.close_price).toFixed(2) : '—'}</td>
+                    <td>${p.shares}</td>
+                    <td class="${pnl>=0?'positive':'negative'}">$${num(pnl)}</td>
+                    <td class="${pnl>=0?'positive':'negative'}">${pnlPct}%</td>
+                    <td>${days}</td>
+                    <td style="max-width:150px;overflow:hidden;text-overflow:ellipsis;">${p.notes||'—'}</td>
+                </tr>`;
+            }).join('');
+        } else { closedSec.style.display = 'none'; }
+    }
+
+    // Add position
+    function showAddPosition() {
+        document.getElementById('posEntryDate').value = new Date().toISOString().split('T')[0];
+        document.getElementById('addPosModal').classList.add('show');
+    }
+
+    async function submitAddPosition() {
+        const entry = parseFloat(document.getElementById('posEntryPrice').value);
+        const shares = parseInt(document.getElementById('posShares').value);
+        const body = {
+            ticker: document.getElementById('posTicker').value.toUpperCase(),
+            account: document.getElementById('posAccount').value,
+            trade_type: 'long',
+            entry_date: document.getElementById('posEntryDate').value,
+            entry_price: entry,
+            shares: shares,
+            cost_basis: Math.round(entry * shares),
+            stop_price: parseFloat(document.getElementById('posStop').value),
+            target_price: parseFloat(document.getElementById('posTarget').value),
+            setup_type: document.getElementById('posSetup').value,
+            notes: document.getElementById('posNotes').value
+        };
+        await fetch('/api/positions', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(body)});
+        hideModal('addPosModal');
+        // Clear form
+        ['posTicker','posEntryPrice','posShares','posStop','posTarget','posSetup','posNotes'].forEach(id => document.getElementById(id).value = '');
+        loadPositions();
+    }
+
+    // Edit stop
+    function showEditStop(id, ticker, currentStop, entryPrice) {
+        document.getElementById('editStopId').value = id;
+        document.getElementById('editStopPrice').value = currentStop;
+        document.getElementById('editStopInfo').textContent = `${ticker} — Entry: $${entryPrice.toFixed(2)}, Current Stop: $${currentStop.toFixed(2)}`;
+        document.getElementById('editStopModal').classList.add('show');
+    }
+
+    async function submitEditStop() {
+        const id = document.getElementById('editStopId').value;
+        const body = { stop_price: parseFloat(document.getElementById('editStopPrice').value) };
+        const notes = document.getElementById('editStopNotes').value;
+        if (notes) body.notes = notes;
+        await fetch(`/api/positions/${id}`, {method:'PATCH', headers:{'Content-Type':'application/json'}, body:JSON.stringify(body)});
+        hideModal('editStopModal');
+        loadPositions();
+    }
+
+    // Close position
+    function showClosePosition(id, ticker, shares, entryPrice) {
+        document.getElementById('closePosId').value = id;
+        document.getElementById('closePosDate').value = new Date().toISOString().split('T')[0];
+        document.getElementById('closePosInfo').textContent = `${ticker} — ${shares} shares @ $${entryPrice.toFixed(2)}`;
+        document.getElementById('closePosModal').classList.add('show');
+    }
+
+    async function submitClosePosition() {
+        const id = document.getElementById('closePosId').value;
+        const closePrice = parseFloat(document.getElementById('closePosPrice').value);
+        // Find position to calc P&L
+        const pos = allPositions.find(p => p.id == id);
+        const pnl = pos ? Math.round((closePrice - pos.entry_price) * pos.shares) : 0;
+        const body = {
+            status: 'closed',
+            close_date: document.getElementById('closePosDate').value,
+            close_price: closePrice,
+            pnl: pnl,
+            notes: document.getElementById('closePosNotes').value || pos.notes
+        };
+        await fetch(`/api/positions/${id}`, {method:'PATCH', headers:{'Content-Type':'application/json'}, body:JSON.stringify(body)});
+        hideModal('closePosModal');
+        loadPositions();
+    }
+
+    // ══════════════════════════════════════════
+    // OPTIONS (existing functionality preserved)
+    // ══════════════════════════════════════════
+    async function loadOptions() {
+        try {
+            const res = await fetch('/api/calls');
+            const data = await res.json();
+            allTrades = data.trades || [];
+            allSummary = data.summary;
+            renderTickerTabs();
+            renderOptionStats();
+            renderTrades();
+        } catch(e) { console.error('Failed to load options:', e); }
+    }
+
+    function filterTicker(tk) {
+        currentTicker = tk;
+        document.querySelectorAll('.ticker-tab').forEach(el => {
+            el.classList.toggle('active', el.dataset.ticker === tk);
+        });
+        renderOptionStats();
+        renderTrades();
+    }
+
+    function getFiltered() {
+        if (currentTicker === 'ALL') return allTrades;
+        return allTrades.filter(t => (t.ticker || 'SPY') === currentTicker);
+    }
+
+    function renderTickerTabs() {
+        const tickers = allSummary.tickers || [];
+        const tabs = document.getElementById('tickerTabs');
+        tabs.innerHTML = `<div class="ticker-tab ${currentTicker==='ALL'?'active':''}" data-ticker="ALL" onclick="filterTicker('ALL')">All</div>`;
+        tickers.forEach(tk => {
+            tabs.innerHTML += `<div class="ticker-tab ${currentTicker===tk?'active':''}" data-ticker="${tk}" onclick="filterTicker('${tk}')">${tk}</div>`;
+        });
+    }
+
+    function renderOptionStats() {
+        const s = currentTicker === 'ALL' ? allSummary : (allSummary.by_ticker || {})[currentTicker] || allSummary;
+        const grid = document.getElementById('optionStatsGrid');
+        grid.innerHTML = `
+            <div class="stat-card"><div class="number">$${num(s.total_premium)}</div><div class="label">Total Premium</div></div>
+            <div class="stat-card"><div class="number ${(s.total_pnl||0) < 0 ? 'negative' : ''}">$${num(s.total_pnl)}</div><div class="label">Net P&L</div></div>
+            <div class="stat-card"><div class="number">${s.total_trades}</div><div class="label">Total Trades</div></div>
+            <div class="stat-card"><div class="number">${s.expired}</div><div class="label">Expired ✓</div></div>
+            <div class="stat-card"><div class="number">${s.called_away}</div><div class="label">Called Away</div></div>
+            <div class="stat-card"><div class="number">${s.open}</div><div class="label">Open Now</div></div>
+            <div class="stat-card"><div class="number">$${num(s.weekly_avg)}</div><div class="label">Avg Premium</div></div>
+            <div class="stat-card"><div class="number">${(s.annualized_yield||0).toFixed(1)}%</div><div class="label">Ann. Yield</div></div>
+        `;
+    }
+
+    function renderTrades() {
+        const trades = getFiltered();
+        const open = trades.filter(t => t.status === 'open');
+        const closed = trades.filter(t => t.status !== 'open').reverse();
+
+        const openSec = document.getElementById('openSection');
+        const openBody = document.getElementById('openBody');
+        if (open.length) {
+            openSec.style.display = 'block';
+            openBody.innerHTML = open.map(t => `
+                <tr>
+                    <td><span class="badge badge-ticker">${t.ticker||'SPY'}</span></td>
+                    <td>${t.sell_date}</td>
+                    <td>${t.expiry}</td>
+                    <td>$${Number(t.strike).toFixed(t.strike%1?2:0)}</td>
+                    <td>${Number(t.delta).toFixed(2)}</td>
+                    <td>${t.contracts}</td>
+                    <td class="positive">$${num(t.premium_total)}</td>
+                    <td>$${Number(t.stock_price_at_sell||t.spy_price_at_sell||0).toFixed(2)}</td>
+                    <td style="max-width:150px;overflow:hidden;text-overflow:ellipsis;">${t.notes||'—'}</td>
+                    <td><button class="btn btn-sm" onclick="showClose(${t.id})">Close</button></td>
+                </tr>
+            `).join('');
+        } else { openSec.style.display = 'none'; }
+
+        const closedSec = document.getElementById('closedSection');
+        const closedBody = document.getElementById('closedBody');
+        if (closed.length) {
+            closedSec.style.display = 'block';
+            closedBody.innerHTML = closed.map(t => {
+                let badge = '';
+                if (t.status==='expired') badge='<span class="badge badge-green">Expired ✓</span>';
+                else if (t.status==='called_away') badge='<span class="badge badge-yellow">Called Away</span>';
+                else if (t.status==='rolled') badge='<span class="badge badge-blue">Rolled</span>';
+                else badge=`<span class="badge badge-red">${t.status}</span>`;
+                const pnl = t.pnl||0;
+                return `<tr>
+                    <td><span class="badge badge-ticker">${t.ticker||'SPY'}</span></td>
+                    <td>${t.sell_date}</td><td>${t.expiry}</td>
+                    <td>$${Number(t.strike).toFixed(t.strike%1?2:0)}</td>
+                    <td>${t.contracts}</td>
+                    <td>$${num(t.premium_total)}</td>
+                    <td>${badge}</td>
+                    <td class="${pnl>=0?'positive':'negative'}">$${num(pnl)}</td>
+                    <td style="max-width:150px;overflow:hidden;text-overflow:ellipsis;">${t.notes||'—'}</td>
+                </tr>`;
+            }).join('');
+        } else { closedSec.style.display = 'none'; }
+    }
+
+    function num(v) { return Number(v||0).toLocaleString('en-US',{maximumFractionDigits:0}); }
+
+    // Option modals
+    function showAdd() {
+        const today = new Date().toISOString().split('T')[0];
+        document.getElementById('addSellDate').value = today;
+        const d = new Date(); d.setDate(d.getDate()+(5-d.getDay()+7)%7);
+        document.getElementById('addExpiry').value = d.toISOString().split('T')[0];
+        if (currentTicker !== 'ALL') document.getElementById('addTicker').value = currentTicker;
+        document.getElementById('addModal').classList.add('show');
+    }
+
+    async function submitAdd() {
+        const body = {
+            ticker: document.getElementById('addTicker').value.toUpperCase(),
+            sell_date: document.getElementById('addSellDate').value,
+            expiry: document.getElementById('addExpiry').value,
+            strike: parseFloat(document.getElementById('addStrike').value),
+            spy_price: parseFloat(document.getElementById('addStockPrice').value),
+            stock_price: parseFloat(document.getElementById('addStockPrice').value),
+            contracts: parseInt(document.getElementById('addContracts').value),
+            premium_per_contract: parseFloat(document.getElementById('addPremium').value),
+            delta: parseFloat(document.getElementById('addDelta').value),
+            notes: document.getElementById('addNotes').value,
+        };
+        await fetch('/api/calls',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});
+        hideModal('addModal');
+        loadOptions();
+    }
+
+    function showClose(id) {
+        document.getElementById('closeTradeId').value = id;
+        document.getElementById('closeDate').value = new Date().toISOString().split('T')[0];
+        document.getElementById('closeModal').classList.add('show');
+    }
+    function toggleCloseFields() {
+        const s = document.getElementById('closeStatus').value;
+        document.getElementById('buybackRow').style.display = (s==='rolled'||s==='closed')?'block':'none';
+    }
+
+    async function submitClose() {
+        const id = document.getElementById('closeTradeId').value;
+        const body = {
+            status: document.getElementById('closeStatus').value,
+            close_date: document.getElementById('closeDate').value,
+            buyback_price: parseFloat(document.getElementById('closeBuyback').value||0),
+            notes: document.getElementById('closeNotes').value,
+        };
+        await fetch(`/api/calls/${id}`,{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});
+        hideModal('closeModal');
+        loadOptions();
+    }
+
+    // ══════════════════════════════════════════
+    // Init
+    // ══════════════════════════════════════════
+    loadPositions();
+    loadOptions();
+    // Auto-refresh quotes every 60s during market hours
+    setInterval(() => { if (currentSection === 'stocks') loadPositions(); }, 60000);
+</script>
+</body>
+</html>

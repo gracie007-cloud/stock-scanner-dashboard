@@ -1,0 +1,172 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Trading Routine — {{ date_str }}</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #1a1a2e; color: #eee; padding: 20px; line-height: 1.6; }
+        .container { max-width: 1000px; margin: 0 auto; }
+        .nav { display: flex; gap: 15px; margin-bottom: 25px; }
+        .nav a { color: #8b949e; text-decoration: none; font-size: 0.95rem; padding: 8px 16px; border-radius: 6px; transition: all 0.2s; }
+        .nav a:hover { color: #eee; background: rgba(255,255,255,0.05); }
+        .nav a.active { color: #e94560; background: rgba(233,69,96,0.1); font-weight: 600; }
+        h1 { color: #e94560; margin-bottom: 5px; font-size: 1.8em; }
+        h2 { color: #eee; margin-bottom: 15px; font-size: 1.2em; }
+        .subtitle { color: #8b949e; margin-bottom: 25px; font-size: 0.9rem; }
+        .card { background: #16213e; border-radius: 8px; padding: 20px; margin-bottom: 20px; box-shadow: 0 4px 6px rgba(0,0,0,0.3); }
+        .btn { display: inline-block; padding: 10px 20px; background: #e94560; color: #fff; border: none; border-radius: 6px; font-size: 0.95rem; cursor: pointer; text-decoration: none; transition: background 0.2s; }
+        .btn:hover { background: #c73e54; }
+        .btn-outline { background: transparent; border: 1px solid #2a2a4a; color: #8b949e; }
+        .btn-outline:hover { border-color: #e94560; color: #e94560; }
+        .btn-done { background: rgba(78,204,163,0.15); border: 1px solid #4ecca3; color: #4ecca3; }
+        .actions { display: flex; gap: 12px; margin-bottom: 25px; flex-wrap: wrap; }
+        .routine-grid { display: flex; flex-wrap: wrap; gap: 12px; margin-bottom: 15px; }
+        .routine-item { display: flex; flex-direction: column; background: #0f3460; border: 1px solid #2a2a4a; border-radius: 8px; padding: 10px 14px; min-width: 130px; }
+        .routine-label { font-size: 0.72rem; color: #8b949e; text-transform: uppercase; margin-bottom: 4px; }
+        .routine-value { font-weight: 600; font-size: 0.95rem; }
+        .routine-text { color: #ccc; font-size: 0.9rem; margin-bottom: 10px; line-height: 1.6; }
+        .routine-text strong { color: #eee; }
+        .badge { display: inline-block; padding: 3px 10px; border-radius: 6px; font-size: 0.82rem; font-weight: 500; }
+        .badge-green { background: rgba(78,204,163,0.15); color: #4ecca3; }
+        .badge-yellow { background: rgba(255,193,7,0.15); color: #ffc107; }
+        .badge-red { background: rgba(233,69,96,0.15); color: #e94560; }
+        .positive { color: #4ecca3; }
+        .negative { color: #e94560; }
+        .lesson { border-left: 3px solid #e94560; padding-left: 12px; margin-top: 15px; }
+        .empty-state { text-align: center; padding: 40px; color: #8b949e; }
+    </style>
+</head>
+<body>
+<div class="container">
+    <div class="nav">
+        <a href="/">📊 Scanner</a>
+        <a href="/routine" class="active">📋 Routine</a>
+        <a href="/calls">📈 Covered Calls</a>
+        <a href="/calendar">📅 Calendar</a>
+    </div>
+
+    <h1>📋 Trading Routine</h1>
+    <p class="subtitle">{{ date_str }}</p>
+
+    <div class="actions">
+        <a href="/routine/{{ date_str }}/premarket" class="{{ 'btn btn-done' if data.get('premarket') else 'btn' }}">
+            {{ '☀️ Edit Pre-Market ✓' if data.get('premarket') else '☀️ Fill Pre-Market' }}
+        </a>
+        <a href="/routine/{{ date_str }}/postclose" class="{{ 'btn btn-done' if data.get('postclose') else 'btn' }}">
+            {{ '🌆 Edit Post-Close ✓' if data.get('postclose') else '🌆 Fill Post-Close' }}
+        </a>
+    </div>
+
+    {% if data.get('premarket') %}
+    {% set pm = data.premarket %}
+    <div class="card">
+        <h2>☀️ Pre-Market Routine</h2>
+        <div class="routine-grid">
+            {% if pm.get('market_trend') %}
+            <div class="routine-item">
+                <span class="routine-label">Market Trend</span>
+                <span class="routine-value badge {{ 'badge-green' if pm.market_trend == 'Confirmed Uptrend' else 'badge-yellow' if pm.market_trend == 'Uptrend Under Pressure' else 'badge-red' if pm.market_trend == 'Market in Correction' else '' }}">{{ pm.market_trend }}</span>
+            </div>
+            {% endif %}
+            {% if pm.get('spy_above_50ma') %}
+            <div class="routine-item">
+                <span class="routine-label">SPY > 50 MA</span>
+                <span class="routine-value {{ 'positive' if pm.spy_above_50ma == 'Yes' else 'negative' }}">{{ pm.spy_above_50ma }}</span>
+            </div>
+            {% endif %}
+            {% if pm.get('spy_above_21ema') %}
+            <div class="routine-item">
+                <span class="routine-label">SPY > 21 EMA</span>
+                <span class="routine-value {{ 'positive' if pm.spy_above_21ema == 'Yes' else 'negative' }}">{{ pm.spy_above_21ema }}</span>
+            </div>
+            {% endif %}
+            {% if pm.get('sp_distribution_days') %}
+            <div class="routine-item">
+                <span class="routine-label">S&P Dist. Days</span>
+                <span class="routine-value">{{ pm.sp_distribution_days }}</span>
+            </div>
+            {% endif %}
+            {% if pm.get('nasdaq_distribution_days') %}
+            <div class="routine-item">
+                <span class="routine-label">Nasdaq Dist. Days</span>
+                <span class="routine-value">{{ pm.nasdaq_distribution_days }}</span>
+            </div>
+            {% endif %}
+            {% if pm.get('futures_tone') %}
+            <div class="routine-item">
+                <span class="routine-label">Futures</span>
+                <span class="routine-value {{ 'positive' if pm.futures_tone == 'Bullish' else 'negative' if pm.futures_tone == 'Bearish' else '' }}">{{ pm.futures_tone }}</span>
+            </div>
+            {% endif %}
+        </div>
+        {% if pm.get('watchlist_notes') %}
+        <div class="routine-text"><strong>Watchlist:</strong> {{ pm.watchlist_notes }}</div>
+        {% endif %}
+        {% if pm.get('open_positions_status') %}
+        <div class="routine-text"><strong>Positions:</strong> {{ pm.open_positions_status }}</div>
+        {% endif %}
+        {% if pm.get('game_plan') %}
+        <div class="routine-text"><strong>Game Plan:</strong> {{ pm.game_plan }}</div>
+        {% endif %}
+    </div>
+    {% endif %}
+
+    {% if data.get('postclose') %}
+    {% set pc = data.postclose %}
+    <div class="card">
+        <h2>🌆 Post-Close Review</h2>
+        {% if pc.get('trades_taken') %}
+        <div class="routine-text"><strong>Trades:</strong> {{ pc.trades_taken }}</div>
+        {% endif %}
+        <div class="routine-grid">
+            {% if pc.get('trade_grade') %}
+            <div class="routine-item">
+                <span class="routine-label">Grade</span>
+                <span class="routine-value badge {{ 'badge-green' if 'A' in pc.trade_grade else 'badge-yellow' if 'B' in pc.trade_grade else 'badge-red' }}">{{ pc.trade_grade }}</span>
+            </div>
+            {% endif %}
+            {% if pc.get('new_highs_vs_lows') %}
+            <div class="routine-item">
+                <span class="routine-label">NH vs NL</span>
+                <span class="routine-value {{ 'positive' if pc.new_highs_vs_lows == 'Expanding' else 'negative' if pc.new_highs_vs_lows == 'Contracting' else '' }}">{{ pc.new_highs_vs_lows }}</span>
+            </div>
+            {% endif %}
+            {% if pc.get('market_status_eod') %}
+            <div class="routine-item">
+                <span class="routine-label">Market EOD</span>
+                <span class="routine-value badge {{ 'badge-green' if pc.market_status_eod == 'Confirmed Uptrend' else 'badge-yellow' if pc.market_status_eod == 'Uptrend Under Pressure' else 'badge-red' if pc.market_status_eod == 'Market in Correction' else '' }}">{{ pc.market_status_eod }}</span>
+            </div>
+            {% endif %}
+            {% if pc.get('emotional_state') %}
+            <div class="routine-item">
+                <span class="routine-label">Emotional State</span>
+                <span class="routine-value">{{ pc.emotional_state }}</span>
+            </div>
+            {% endif %}
+        </div>
+        {% if pc.get('sector_notes') %}
+        <div class="routine-text"><strong>Sectors:</strong> {{ pc.sector_notes }}</div>
+        {% endif %}
+        {% if pc.get('best_chart_today') %}
+        <div class="routine-text"><strong>Best Chart:</strong> {{ pc.best_chart_today }}</div>
+        {% endif %}
+        {% if pc.get('lesson_learned') %}
+        <div class="routine-text lesson"><strong>💡 Lesson:</strong> {{ pc.lesson_learned }}</div>
+        {% endif %}
+        {% if pc.get('notes') %}
+        <div class="routine-text"><strong>Notes:</strong> {{ pc.notes }}</div>
+        {% endif %}
+    </div>
+    {% endif %}
+
+    {% if not data.get('premarket') and not data.get('postclose') %}
+    <div class="card empty-state">
+        <p>No routine filled for this day yet.</p>
+        <p style="margin-top:10px;">Use the buttons above to start your pre-market or post-close checklist.</p>
+    </div>
+    {% endif %}
+</div>
+</body>
+</html>

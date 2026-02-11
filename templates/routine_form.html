@@ -1,0 +1,166 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{ "☀️ Pre-Market" if routine_type == "premarket" else "🌆 Post-Close" }} — {{ date_str }}</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #1a1a2e; color: #eee; padding: 20px; line-height: 1.6; }
+        .container { max-width: 800px; margin: 0 auto; }
+        .nav { display: flex; gap: 15px; margin-bottom: 25px; }
+        .nav a { color: #8b949e; text-decoration: none; font-size: 0.95rem; padding: 8px 16px; border-radius: 6px; }
+        .nav a:hover { color: #eee; background: rgba(255,255,255,0.05); }
+        .nav a.active { color: #e94560; background: rgba(233,69,96,0.1); font-weight: 600; }
+        h2 { color: #e94560; margin-bottom: 5px; font-size: 1.5em; }
+        .subtitle { color: #8b949e; margin-bottom: 25px; }
+        .card { background: #16213e; border-radius: 8px; padding: 25px; margin-bottom: 20px; }
+        .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 0 20px; }
+        label { display: block; margin-bottom: 6px; font-size: 0.85rem; color: #8b949e; }
+        input, select, textarea {
+            width: 100%; padding: 10px 12px; background: #0f3460; border: 1px solid #2a2a4a;
+            border-radius: 6px; color: #eee; font-family: inherit; font-size: 0.9rem; margin-bottom: 15px;
+        }
+        input:focus, select:focus, textarea:focus { outline: none; border-color: #e94560; }
+        textarea { min-height: 70px; resize: vertical; }
+        .btn { display: inline-block; padding: 10px 20px; background: #e94560; color: #fff; border: none; border-radius: 6px; font-size: 0.95rem; cursor: pointer; text-decoration: none; }
+        .btn:hover { background: #c73e54; }
+        .btn-outline { background: transparent; border: 1px solid #2a2a4a; color: #8b949e; }
+        .btn-outline:hover { border-color: #e94560; color: #e94560; }
+        @media (max-width: 600px) { .form-grid { grid-template-columns: 1fr; } }
+    </style>
+</head>
+<body>
+<div class="container">
+    <div class="nav">
+        <a href="/">📊 Scanner</a>
+        <a href="/routine" class="active">📋 Routine</a>
+        <a href="/calls">📈 Covered Calls</a>
+        <a href="/calendar">📅 Calendar</a>
+    </div>
+
+    <div class="card">
+        <h2>{{ "☀️ Pre-Market Routine" if routine_type == "premarket" else "🌆 Post-Close Review" }}</h2>
+        <p class="subtitle">{{ date_str }}</p>
+
+        <form method="POST">
+            {% if routine_type == "premarket" %}
+
+            <label>Market Trend</label>
+            <select name="routine_market_trend">
+                {% for opt in ["", "Confirmed Uptrend", "Uptrend Under Pressure", "Market in Correction", "Rally Attempt"] %}
+                <option value="{{ opt }}" {{ "selected" if data.get("market_trend") == opt }}>{{ opt or "— Select —" }}</option>
+                {% endfor %}
+            </select>
+
+            <div class="form-grid">
+                <div>
+                    <label>SPY above 50 MA?</label>
+                    <select name="routine_spy_above_50ma">
+                        <option value="">— Select —</option>
+                        <option value="Yes" {{ "selected" if data.get("spy_above_50ma") == "Yes" }}>Yes</option>
+                        <option value="No" {{ "selected" if data.get("spy_above_50ma") == "No" }}>No</option>
+                    </select>
+                </div>
+                <div>
+                    <label>SPY above 21 EMA?</label>
+                    <select name="routine_spy_above_21ema">
+                        <option value="">— Select —</option>
+                        <option value="Yes" {{ "selected" if data.get("spy_above_21ema") == "Yes" }}>Yes</option>
+                        <option value="No" {{ "selected" if data.get("spy_above_21ema") == "No" }}>No</option>
+                    </select>
+                </div>
+            </div>
+
+            <div class="form-grid">
+                <div>
+                    <label>S&P Distribution Days (last 25)</label>
+                    <input type="number" name="routine_sp_distribution_days" min="0" max="10" value="{{ data.get('sp_distribution_days', '') }}" placeholder="0-10">
+                </div>
+                <div>
+                    <label>Nasdaq Distribution Days (last 25)</label>
+                    <input type="number" name="routine_nasdaq_distribution_days" min="0" max="10" value="{{ data.get('nasdaq_distribution_days', '') }}" placeholder="0-10">
+                </div>
+            </div>
+
+            <div class="form-grid">
+                <div>
+                    <label>Futures Tone</label>
+                    <select name="routine_futures_tone">
+                        {% for opt in ["", "Bullish", "Neutral", "Bearish"] %}
+                        <option value="{{ opt }}" {{ "selected" if data.get("futures_tone") == opt }}>{{ opt or "— Select —" }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+            </div>
+
+            <label>Watchlist — What setups am I watching today?</label>
+            <textarea name="routine_watchlist_notes" placeholder="AAPL building base near $195, NVDA tight pivot at $880...">{{ data.get("watchlist_notes", "") }}</textarea>
+
+            <label>Open Positions — How are they looking?</label>
+            <textarea name="routine_open_positions_status" placeholder="BUD +3.2%, holding above 10 EMA. SPY calls expiring Friday.">{{ data.get("open_positions_status", "") }}</textarea>
+
+            <label>Game Plan — What's the plan for today?</label>
+            <textarea name="routine_game_plan" placeholder="Watch AAPL for breakout above $195 on volume. Sell SPY calls at open.">{{ data.get("game_plan", "") }}</textarea>
+
+            {% else %}
+
+            <label>Trades Taken — What did I trade and why?</label>
+            <textarea name="routine_trades_taken" placeholder="Sold 7x SPY $704 calls for $0.90. Bought 100 AAPL at $195.20 breakout.">{{ data.get("trades_taken", "") }}</textarea>
+
+            <div class="form-grid">
+                <div>
+                    <label>Trade Grade</label>
+                    <select name="routine_trade_grade">
+                        {% for opt in ["", "A - Followed Rules", "B - Minor Deviation", "C - Broke Rules"] %}
+                        <option value="{{ opt }}" {{ "selected" if data.get("trade_grade") == opt }}>{{ opt or "— Select —" }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div>
+                    <label>New Highs vs Lows</label>
+                    <select name="routine_new_highs_vs_lows">
+                        {% for opt in ["", "Expanding", "Flat", "Contracting"] %}
+                        <option value="{{ opt }}" {{ "selected" if data.get("new_highs_vs_lows") == opt }}>{{ opt or "— Select —" }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+            </div>
+
+            <label>Market Status (End of Day)</label>
+            <select name="routine_market_status_eod">
+                {% for opt in ["", "Confirmed Uptrend", "Uptrend Under Pressure", "Market in Correction", "Rally Attempt"] %}
+                <option value="{{ opt }}" {{ "selected" if data.get("market_status_eod") == opt }}>{{ opt or "— Select —" }}</option>
+                {% endfor %}
+            </select>
+
+            <label>Sector Notes — Any notable moves?</label>
+            <textarea name="routine_sector_notes" rows="2" placeholder="Energy surged +2.3%, tech lagged.">{{ data.get("sector_notes", "") }}</textarea>
+
+            <label>Best Chart Today — What caught my eye?</label>
+            <textarea name="routine_best_chart_today" rows="2" placeholder="CRWD — perfect cup with handle, volume 2x on breakout.">{{ data.get("best_chart_today", "") }}</textarea>
+
+            <label>Emotional State</label>
+            <select name="routine_emotional_state">
+                {% for opt in ["", "Patient & Disciplined", "Slightly Anxious", "FOMO", "Fearful", "Overconfident", "Frustrated"] %}
+                <option value="{{ opt }}" {{ "selected" if data.get("emotional_state") == opt }}>{{ opt or "— Select —" }}</option>
+                {% endfor %}
+            </select>
+
+            <label>Lesson Learned — One takeaway from today</label>
+            <textarea name="routine_lesson_learned" rows="2" placeholder="Waited for confirmation instead of chasing.">{{ data.get("lesson_learned", "") }}</textarea>
+
+            <label>Additional Notes</label>
+            <textarea name="routine_notes" rows="2">{{ data.get("notes", "") }}</textarea>
+
+            {% endif %}
+
+            <div style="margin-top:20px; display:flex; gap:10px;">
+                <button type="submit" class="btn">💾 Save</button>
+                <a href="/routine/{{ date_str }}" class="btn btn-outline">Cancel</a>
+            </div>
+        </form>
+    </div>
+</div>
+</body>
+</html>
